@@ -1,0 +1,239 @@
+// مصفوفة لتخزين البيانات
+let transactions = JSON.parse(localStorage.getItem('debtTransactions')) || [];
+
+// حفظ البيانات
+function saveToLocal() {
+    localStorage.setItem('debtTransactions', JSON.stringify(transactions));
+}
+
+// عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('transDate').valueAsDate = new Date();
+    renderGeneralLedger();
+});
+
+// --- 1. منطق التبويبات (APP TABS) ---
+function switchTab(tabId) {
+    // إخفاء كل المحتويات
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    
+    // إزالة التنشيط من كل الأزرار
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+    // تفعيل التبويب المختار
+    document.getElementById(tabId).classList.remove('hidden');
+    document.getElementById(tabId).classList.add('active');
+    
+    // تفعيل الزر المطابق
+    const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
+    if(activeBtn) activeBtn.classList.add('active');
+
+    // تحديث البيانات إذا لزم الأمر
+    if(tabId === 'generalTab') renderGeneralLedger();
+}
+
+// --- 2. إدارة العمليات (إضافة / تعديل) ---
+document.getElementById('transactionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const id = document.getElementById('editTransactionId').value;
+    const name = document.getElementById('customerName').value.trim();
+    const type = document.getElementById('transType').value;
+    const amount = parseFloat(document.getElementById('amount').value);
+    const date = document.getElementById('transDate').value;
+    
+    // الحقول الجديدة
+    const itemName = document.getElementById('itemName').value.trim();
+    const itemCount = document.getElementById('itemCount').value;
+    const itemDetails = document.getElementById('itemDetails').value.trim();
+
+    if (!name || isNaN(amount) || amount <= 0) {
+        alert("يرجى إدخال الاسم والمبلغ بشكل صحيح");
+        return;
+    }
+
+    const transactionData = {
+        id: id ? parseInt(id) : Date.now(),
+        date: date,
+        name: name,
+        type: type,
+        amount: amount,
+        itemName: itemName,    // المادة
+        itemCount: itemCount,  // العدد
+        itemDetails: itemDetails // ملاحظات
+    };
+
+    if (id) {
+        // تعديل عملية موجودة
+        const index = transactions.findIndex(t => t.id == id);
+        if(index !== -1) transactions[index] = transactionData;
+        alert("تم تعديل العملية بنجاح");
+        cancelEditMode(); // الخروج من وضع التعديل
+    } else {
+        // إضافة عملية جديدة
+        transactions.push(transactionData);
+        alert("تمت الإضافة بنجاح");
+        this.reset();
+        document.getElementById('transDate').valueAsDate = new Date();
+    }
+
+    saveToLocal();
+    renderGeneralLedger();
+    
+    // إذا كان هناك بحث نشط، نحدث الكشف
+    const activeSearch = document.getElementById('statementCustomerName').innerText;
+    if(activeSearch !== '---' && name === activeSearch) {
+        searchCustomer(name);
+    }
+});
+
+// --- 3. البحث وكشف الحساب ---
+function searchCustomer(forceName = null) {
+    const searchName = forceName || document.getElementById('searchInput').value.trim();
+    
+    if (!searchName) {
+        alert("يرجى كتابة اسم الزبون");
+        return;
+    }
+
+    // عرض قسم الكشف
+    document.getElementById('customerStatementSection').classList.remove('hidden');
+    document.getElementById('statementCustomerName').innerText = searchName;
+
+    const customerTrans = transactions
+        .filter(t => t.name.toLowerCase() === searchName.toLowerCase()) // مطابقة دقيقة للاسم لضمان الدقة
+        .sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
+
+    const tbody = document.getElementById('customerTableBody');
+    tbody.innerHTML = '';
+
+    let runningBalance = 0;
+
+    if (customerTrans.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">لا توجد حركات لهذا الزبون</td></tr>';
+    } else {
+        customerTrans.forEach(t => {
+            // حساب الرصيد التراكمي: مدين يزيد الرصيد، دائن ينقص الرصيد
+            if (t.type === 'debt') {
+                runningBalance += t.amount;
+            } else {
+                runningBalance -= t.amount;
+            }
+
+            const row = document.createElement('tr');
+            
+            // تجهيز النصوص
+            const typeText = t.type === 'debt' ? 'مدين' : 'دائن';
+            const typeClass = t.type === 'debt' ? 'text-green' : 'text-red';
+            
+            // دمج اسم المادة والملاحظات في عمود واحد
+            let notesText = t.itemDetails || '-';
+            if (t.itemName) {
+                notesText = `${t.itemName} ${t.itemCount ? '(' + t.itemCount + ')' : ''} - ${notesText}`;
+            }
+            if (notesText === '-') notesText = t.itemName || '-'; // إذا كانت التفاصيل فارغة نضع اسم المادة فقط
+
+            row.innerHTML = `
+                <td>${t.date}</td>
+                <td>${t.name}</td>
+                <td class="${typeClass}">${typeText}</td>
+                <td>${formatMoney(t.amount)}</td>
+                <td style="direction: ltr; text-align: right; font-weight:bold;">${formatMoney(runningBalance)}</td>
+                <td>${notesText}</td>
+                <td>
+                    <button class="btn-small btn-edit" onclick="editTransaction(${t.id})"><i class="fas fa-pen"></i></button>
+                    <button class="btn-small btn-delete" onclick="deleteTransaction(${t.id})"><i class="fas fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    const finalDisplay = document.getElementById('finalBalanceDisplay');
+    finalDisplay.innerText = formatMoney(runningBalance);
+    finalDisplay.style.color = runningBalance > 0 ? '#4caf50' : (runningBalance < 0 ? '#ff5252' : '#fff');
+}
+
+// --- 4. إجراءات الحذف والتعديل والتسديد السريع ---
+
+function deleteTransaction(id) {
+    if(confirm("هل أنت متأكد من حذف هذه العملية؟ لا يمكن التراجع.")) {
+        transactions = transactions.filter(t => t.id !== id);
+        saveToLocal();
+        // تحديث العرض الحالي
+        const currentName = document.getElementById('statementCustomerName').innerText;
+        searchCustomer(currentName);
+        renderGeneralLedger();
+    }
+}
+
+function editTransaction(id) {
+    const t = transactions.find(trans => trans.id === id);
+    if (!t) return;
+
+    // تعبئة النموذج بالبيانات
+    document.getElementById('editTransactionId').value = t.id;
+    document.getElementById('customerName').value = t.name;
+    document.getElementById('transType').value = t.type;
+    document.getElementById('amount').value = t.amount;
+    document.getElementById('transDate').value = t.date;
+    document.getElementById('itemName').value = t.itemName || '';
+    document.getElementById('itemCount').value = t.itemCount || '';
+    document.getElementById('itemDetails').value = t.itemDetails || '';
+
+    // تغيير حالة الزر والنصوص
+    document.getElementById('saveBtn').innerText = "حفظ التعديلات";
+    document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+    // الانتقال لتبويب الإضافة
+    switchTab('addTab');
+}
+
+function cancelEditMode() {
+    document.getElementById('transactionForm').reset();
+    document.getElementById('editTransactionId').value = '';
+    document.getElementById('saveBtn').innerText = "حفظ العملية";
+    document.getElementById('cancelEditBtn').classList.add('hidden');
+    document.getElementById('transDate').valueAsDate = new Date();
+}
+
+function prepareQuickAction(type) {
+    const name = document.getElementById('statementCustomerName').innerText;
+    if(name === '---') return;
+
+    cancelEditMode(); // التأكد من عدم وجود تعديل معلق
+    document.getElementById('customerName').value = name;
+    document.getElementById('transType').value = type;
+    switchTab('addTab');
+}
+
+// --- 5. السجل العام ---
+function renderGeneralLedger() {
+    const tbody = document.getElementById('generalTableBody');
+    tbody.innerHTML = '';
+    const sortedTrans = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+
+    sortedTrans.slice(0, 50).forEach((t, index) => { // عرض آخر 50 فقط للأداء
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${t.name}</td>
+            <td class="${t.type === 'debt' ? 'text-green' : 'text-red'}">${t.type === 'debt' ? 'مدين' : 'دائن'}</td>
+            <td>${formatMoney(t.amount)}</td>
+            <td>${t.itemName || '-'}</td>
+            <td><button class="btn-glass" style="padding: 2px 8px; font-size: 0.8em;" onclick="performSearch('${t.name}')">كشف</button></td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function performSearch(name) {
+    document.getElementById('searchInput').value = name;
+    switchTab('searchTab');
+    searchCustomer(name);
+}
+
+function formatMoney(amount) {
+    return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
