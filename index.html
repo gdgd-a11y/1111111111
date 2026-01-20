@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام سجل الديون المطور</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        
+        <header class="glass-panel text-center">
+            <h1><i class="fas fa-file-invoice-dollar"></i> سجل الديون الذكي</h1>
+        </header>
+
+        <div class="glass-panel nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('addTab')">
+                <i class="fas fa-plus-circle"></i> إضافة عملية
+            </button>
+            <button class="tab-btn" onclick="switchTab('searchTab')">
+                <i class="fas fa-user"></i> كشف حساب
+            </button>
+            <button class="tab-btn" onclick="switchTab('generalTab')">
+                <i class="fas fa-history"></i> السجل العام
+            </button>
+        </div>
+
+        <section id="addTab" class="tab-content active">
+            <div class="glass-panel input-section">
+                <h3><i class="fas fa-edit"></i> بيانات العملية</h3>
+                <form id="transactionForm">
+                    <input type="hidden" id="editTransactionId">
+                    
+                    <div class="form-group">
+                        <input type="text" id="customerName" placeholder="اسم الزبون" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <select id="transType" required>
+                                <option value="debt">مدين (عليه)</option>
+                                <option value="payment">دائن (له/تسديد)</option>
+                            </select>
+                        </div>
+                        <div class="form-group half">
+                            <input type="date" id="transDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <input type="text" id="itemName" placeholder="المادة (اسم السلعة)">
+                        </div>
+                        <div class="form-group half">
+                            <input type="number" id="itemCount" placeholder="العدد" min="1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="itemDetails" placeholder="ملاحظات / تفاصيل">
+                    </div>
+
+                    <div class="form-group">
+                        <input type="number" id="amount" placeholder="المبلغ الكلي" min="1" step="0.01" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-glass" id="saveBtn">حفظ العملية</button>
+                    <button type="button" class="btn-glass btn-secondary hidden" id="cancelEditBtn" onclick="cancelEditMode()">إلغاء التعديل</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="searchTab" class="tab-content hidden">
+            <div class="glass-panel search-section">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="ابحث باسم الزبون...">
+                    <button onclick="searchCustomer()" class="btn-glass"><i class="fas fa-search"></i> عرض الكشف</button>
+                </div>
+            </div>
+
+            <div id="customerStatementSection" class="glass-panel table-section hidden">
+                <div class="customer-header">
+                    <h3><i class="fas fa-user-tag"></i> الزبون: <span id="statementCustomerName">---</span></h3>
+                    <div class="balance-card">
+                        <span>الرصيد النهائي:</span>
+                        <span id="finalBalanceDisplay">0.00</span>
+                    </div>
+                </div>
+                
+                <div class="quick-actions">
+                    <button onclick="prepareQuickAction('payment')" class="btn-small btn-green">إضافة دائن (تسديد)</button>
+                    <button onclick="prepareQuickAction('debt')" class="btn-small btn-red">إضافة مدين (دين)</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>اسم الزبون</th>
+                                <th>نوع العملية</th>
+                                <th>المبلغ</th>
+                                <th>الرصيد بعد العملية</th>
+                                <th>ملاحظات</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerTableBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="generalTab" class="tab-content hidden">
+            <div class="glass-panel table-section">
+                <h3><i class="fas fa-list-alt"></i> آخر العمليات المسجلة</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>الزبون</th>
+                                <th>النوع</th>
+                                <th>المبلغ</th>
+                                <th>المادة</th>
+                                <th>عرض</th>
+                            </tr>
+                        </thead>
+                        <tbody id="generalTableBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
