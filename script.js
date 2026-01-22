@@ -124,8 +124,8 @@ function searchCustomer(forceName = null) {
 
             const row = document.createElement('tr');
             
-            // تجهيز النصوص
-            const typeText = t.type === 'debt' ? 'مدين (مطلوب)' : 'دائن (يطلب)';
+            // تجهيز النصوص (تسديد بدل دائن)
+            const typeText = t.type === 'debt' ? 'مدين (مطلوب)' : 'تسديد';
             const typeClass = t.type === 'debt' ? 'text-green' : 'text-red';
             
             // دمج اسم المادة والملاحظات
@@ -135,7 +135,7 @@ function searchCustomer(forceName = null) {
             }
             if (notesText === '-') notesText = t.itemName || '-';
 
-            // تم حذف عمود الرصيد بعد العملية من هنا
+            // أزرار التعديل والحذف
             row.innerHTML = `
                 <td>${t.date}</td>
                 <td>${t.name}</td>
@@ -156,7 +156,7 @@ function searchCustomer(forceName = null) {
     finalDisplay.style.color = runningBalance > 0 ? '#4caf50' : (runningBalance < 0 ? '#ff5252' : '#fff');
 }
 
-// --- 4. وظيفة عرض قائمة الزبائن (الجديدة) ---
+// --- 4. وظيفة عرض قائمة الزبائن (الجديدة مع الحذف والتعديل) ---
 function renderCustomerList() {
     const tbody = document.getElementById('customersListBody');
     tbody.innerHTML = '';
@@ -173,8 +173,14 @@ function renderCustomerList() {
                 <td>${index + 1}</td>
                 <td style="font-weight:bold;">${name}</td>
                 <td>
-                    <button class="btn-glass" style="padding: 5px 15px;" onclick="performSearch('${name}')">
-                        <i class="fas fa-eye"></i> كشف
+                    <button class="btn-glass" style="padding: 5px 10px;" onclick="performSearch('${name}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-small btn-edit" style="width:auto; display:inline-block;" onclick="renameCustomer('${name}')">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <button class="btn-small btn-delete" style="width:auto; display:inline-block;" onclick="deleteCustomerAll('${name}')">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </td>
             `;
@@ -183,7 +189,48 @@ function renderCustomerList() {
     }
 }
 
-// --- 5. إجراءات الحذف والتعديل والتسديد السريع ---
+// --- 5. وظائف إدارة الزبائن الجديدة ---
+
+function renameCustomer(oldName) {
+    const newName = prompt("أدخل الاسم الجديد للزبون:", oldName);
+    if(newName && newName.trim() !== "" && newName !== oldName) {
+        // تحديث كل العمليات المرتبطة بهذا الاسم
+        let updatedCount = 0;
+        transactions.forEach(t => {
+            if(t.name === oldName) {
+                t.name = newName.trim();
+                updatedCount++;
+            }
+        });
+        saveToLocal();
+        alert(`تم تعديل اسم الزبون بنجاح في ${updatedCount} عملية.`);
+        renderCustomerList();
+        renderGeneralLedger();
+        
+        // إذا كان هناك بحث نشط بنفس الاسم القديم، نحدثه
+        if(document.getElementById('statementCustomerName').innerText === oldName) {
+             document.getElementById('searchInput').value = newName.trim();
+             searchCustomer(newName.trim());
+        }
+    }
+}
+
+function deleteCustomerAll(name) {
+    if(confirm(`تحذير هام!\nهل أنت متأكد من حذف الزبون "${name}" وكافة ديونه وسجلاته نهائياً؟\nلا يمكن التراجع عن هذا الإجراء.`)) {
+        transactions = transactions.filter(t => t.name !== name);
+        saveToLocal();
+        renderCustomerList();
+        renderGeneralLedger();
+        
+        // إخفاء الكشف إذا كان معروضاً لنفس الزبون
+        if(document.getElementById('statementCustomerName').innerText === name) {
+            document.getElementById('customerStatementSection').classList.add('hidden');
+            document.getElementById('statementCustomerName').innerText = "---";
+        }
+    }
+}
+
+// --- 6. إجراءات الحذف والتعديل (للعمليات الفردية) ---
 
 function deleteTransaction(id) {
     if(confirm("هل أنت متأكد من حذف هذه العملية؟ لا يمكن التراجع.")) {
@@ -191,7 +238,7 @@ function deleteTransaction(id) {
         saveToLocal();
         // تحديث العرض الحالي
         const currentName = document.getElementById('statementCustomerName').innerText;
-        searchCustomer(currentName);
+        if(currentName !== '---') searchCustomer(currentName);
         renderGeneralLedger();
     }
 }
@@ -236,7 +283,7 @@ function prepareQuickAction(type) {
     switchTab('addTab');
 }
 
-// --- 6. السجل العام ---
+// --- 7. السجل العام ---
 function renderGeneralLedger() {
     const tbody = document.getElementById('generalTableBody');
     tbody.innerHTML = '';
@@ -247,10 +294,14 @@ function renderGeneralLedger() {
         row.innerHTML = `
             <td>${index + 1}</td>
             <td>${t.name}</td>
-            <td class="${t.type === 'debt' ? 'text-green' : 'text-red'}">${t.type === 'debt' ? 'مدين' : 'دائن'}</td>
+            <td class="${t.type === 'debt' ? 'text-green' : 'text-red'}">${t.type === 'debt' ? 'مدين' : 'تسديد'}</td>
             <td>${formatMoney(t.amount)}</td>
             <td>${t.itemName || '-'}</td>
-            <td><button class="btn-glass" style="padding: 2px 8px; font-size: 0.8em;" onclick="performSearch('${t.name}')">كشف</button></td>
+            <td>
+                <button class="btn-small btn-edit" onclick="editTransaction(${t.id})"><i class="fas fa-pen"></i></button>
+                <button class="btn-small btn-delete" onclick="deleteTransaction(${t.id})"><i class="fas fa-trash"></i></button>
+                <button class="btn-glass" style="padding: 2px 8px; font-size: 0.8em;" onclick="performSearch('${t.name}')">كشف</button>
+            </td>
         `;
         tbody.appendChild(row);
     });
