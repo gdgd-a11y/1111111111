@@ -16,18 +16,6 @@
             <h1><i class="fas fa-file-invoice-dollar"></i> سجل الديون الذكي</h1>
         </header>
 
-        <div class="glass-panel nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('addTab')">
-                <i class="fas fa-plus-circle"></i> إضافة عملية
-            </button>
-            <button class="tab-btn" onclick="switchTab('searchTab')">
-                <i class="fas fa-user"></i> كشف حساب
-            </button>
-            <button class="tab-btn" onclick="switchTab('generalTab')">
-                <i class="fas fa-history"></i> السجل العام
-            </button>
-        </div>
-
         <section id="addTab" class="tab-content active">
             <div class="glass-panel input-section">
                 <h3><i class="fas fa-edit"></i> بيانات العملية</h3>
@@ -41,8 +29,8 @@
                     <div class="form-row">
                         <div class="form-group half">
                             <select id="transType" required>
-                                <option value="debt">مدين (عليه)</option>
-                                <option value="payment">دائن (له/تسديد)</option>
+                                <option value="debt">مدين (مطلوب)</option>
+                                <option value="payment">دائن (يطلب)</option>
                             </select>
                         </div>
                         <div class="form-group half">
@@ -90,8 +78,8 @@
                 </div>
                 
                 <div class="quick-actions">
-                    <button onclick="prepareQuickAction('payment')" class="btn-small btn-green">إضافة دائن (تسديد)</button>
-                    <button onclick="prepareQuickAction('debt')" class="btn-small btn-red">إضافة مدين (دين)</button>
+                    <button onclick="prepareQuickAction('debt')" class="btn-small btn-green">إضافة دين</button>
+                    <button onclick="prepareQuickAction('payment')" class="btn-small btn-red">تسديد</button>
                 </div>
 
                 <div class="table-responsive">
@@ -102,13 +90,31 @@
                                 <th>اسم الزبون</th>
                                 <th>نوع العملية</th>
                                 <th>المبلغ</th>
-                                <th>الرصيد بعد العملية</th>
                                 <th>ملاحظات</th>
                                 <th>إجراءات</th>
                             </tr>
                         </thead>
                         <tbody id="customerTableBody">
                             </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="customersTab" class="tab-content hidden">
+            <div class="glass-panel table-section">
+                <h3><i class="fas fa-users"></i> فهرس الزبائن</h3>
+                <div class="table-responsive">
+                    <table class="customers-list-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>اسم الزبون</th>
+                                <th>إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersListBody">
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -136,6 +142,21 @@
             </div>
         </section>
 
+    </div>
+
+    <div class="glass-panel nav-tabs bottom-nav">
+        <button class="tab-btn active" onclick="switchTab('addTab')">
+            <i class="fas fa-plus-circle"></i> إضافة
+        </button>
+        <button class="tab-btn" onclick="switchTab('customersTab')">
+            <i class="fas fa-users"></i> الزبائن
+        </button>
+        <button class="tab-btn" onclick="switchTab('searchTab')">
+            <i class="fas fa-file-invoice"></i> الكشف
+        </button>
+        <button class="tab-btn" onclick="switchTab('generalTab')">
+            <i class="fas fa-history"></i> السجل
+        </button>
     </div>
 
     <script src="script.js"></script>
