@@ -115,17 +115,21 @@ function searchCustomer(forceName = null) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">لا توجد حركات لهذا الزبون</td></tr>';
     } else {
         customerTrans.forEach(t => {
-            // حساب الرصيد التراكمي
+            // حساب الرصيد التراكمي (تم تصحيح المعادلة الرياضية حسب الصورة)
+            // الزر الأخضر (debt) أصبح يعمل كتسديد (طرح)
+            // الزر الأحمر (payment) أصبح يعمل كدين (جمع)
             if (t.type === 'debt') {
-                runningBalance += t.amount;
-            } else {
                 runningBalance -= t.amount;
+            } else {
+                runningBalance += t.amount;
             }
 
             const row = document.createElement('tr');
             
-            // تجهيز النصوص (تسديد بدل دائن)
-            const typeText = t.type === 'debt' ? 'مدين (مطلوب)' : 'تسديد';
+            // --- تصحيح المسميات حسب طلبك ---
+            // إذا كان النوع مخزن debt (الأخضر) نعرضه "تسديد"
+            // إذا كان النوع مخزن payment (الأحمر) نعرضه "مدين"
+            const typeText = t.type === 'debt' ? 'تسديد' : 'مدين (مطلوب)';
             const typeClass = t.type === 'debt' ? 'text-green' : 'text-red';
             
             // دمج اسم المادة والملاحظات
@@ -156,7 +160,7 @@ function searchCustomer(forceName = null) {
     finalDisplay.style.color = runningBalance > 0 ? '#4caf50' : (runningBalance < 0 ? '#ff5252' : '#fff');
 }
 
-// --- 4. وظيفة عرض قائمة الزبائن (الجديدة مع الحذف والتعديل) ---
+// --- 4. وظيفة عرض قائمة الزبائن (زر حذف فقط) ---
 function renderCustomerList() {
     const tbody = document.getElementById('customersListBody');
     tbody.innerHTML = '';
@@ -173,14 +177,8 @@ function renderCustomerList() {
                 <td>${index + 1}</td>
                 <td style="font-weight:bold;">${name}</td>
                 <td>
-                    <button class="btn-glass" style="padding: 5px 10px;" onclick="performSearch('${name}')">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-small btn-edit" style="width:auto; display:inline-block;" onclick="renameCustomer('${name}')">
-                        <i class="fas fa-pen"></i>
-                    </button>
                     <button class="btn-small btn-delete" style="width:auto; display:inline-block;" onclick="deleteCustomerAll('${name}')">
-                        <i class="fas fa-trash"></i>
+                        <i class="fas fa-trash"></i> حذف
                     </button>
                 </td>
             `;
