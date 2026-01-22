@@ -29,8 +29,9 @@ function switchTab(tabId) {
     const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
     if(activeBtn) activeBtn.classList.add('active');
 
-    // تحديث البيانات إذا لزم الأمر
+    // تحديث البيانات حسب التبويب
     if(tabId === 'generalTab') renderGeneralLedger();
+    if(tabId === 'customersTab') renderCustomerList();
 }
 
 // --- 2. إدارة العمليات (إضافة / تعديل) ---
@@ -102,7 +103,7 @@ function searchCustomer(forceName = null) {
     document.getElementById('statementCustomerName').innerText = searchName;
 
     const customerTrans = transactions
-        .filter(t => t.name.toLowerCase() === searchName.toLowerCase()) // مطابقة دقيقة للاسم لضمان الدقة
+        .filter(t => t.name.toLowerCase() === searchName.toLowerCase()) // مطابقة دقيقة للاسم
         .sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
 
     const tbody = document.getElementById('customerTableBody');
@@ -111,10 +112,10 @@ function searchCustomer(forceName = null) {
     let runningBalance = 0;
 
     if (customerTrans.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">لا توجد حركات لهذا الزبون</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">لا توجد حركات لهذا الزبون</td></tr>';
     } else {
         customerTrans.forEach(t => {
-            // حساب الرصيد التراكمي: مدين يزيد الرصيد، دائن ينقص الرصيد
+            // حساب الرصيد التراكمي
             if (t.type === 'debt') {
                 runningBalance += t.amount;
             } else {
@@ -124,22 +125,22 @@ function searchCustomer(forceName = null) {
             const row = document.createElement('tr');
             
             // تجهيز النصوص
-            const typeText = t.type === 'debt' ? 'مدين' : 'دائن';
+            const typeText = t.type === 'debt' ? 'مدين (مطلوب)' : 'دائن (يطلب)';
             const typeClass = t.type === 'debt' ? 'text-green' : 'text-red';
             
-            // دمج اسم المادة والملاحظات في عمود واحد
+            // دمج اسم المادة والملاحظات
             let notesText = t.itemDetails || '-';
             if (t.itemName) {
                 notesText = `${t.itemName} ${t.itemCount ? '(' + t.itemCount + ')' : ''} - ${notesText}`;
             }
-            if (notesText === '-') notesText = t.itemName || '-'; // إذا كانت التفاصيل فارغة نضع اسم المادة فقط
+            if (notesText === '-') notesText = t.itemName || '-';
 
+            // تم حذف عمود الرصيد بعد العملية من هنا
             row.innerHTML = `
                 <td>${t.date}</td>
                 <td>${t.name}</td>
                 <td class="${typeClass}">${typeText}</td>
                 <td>${formatMoney(t.amount)}</td>
-                <td style="direction: ltr; text-align: right; font-weight:bold;">${formatMoney(runningBalance)}</td>
                 <td>${notesText}</td>
                 <td>
                     <button class="btn-small btn-edit" onclick="editTransaction(${t.id})"><i class="fas fa-pen"></i></button>
@@ -155,7 +156,34 @@ function searchCustomer(forceName = null) {
     finalDisplay.style.color = runningBalance > 0 ? '#4caf50' : (runningBalance < 0 ? '#ff5252' : '#fff');
 }
 
-// --- 4. إجراءات الحذف والتعديل والتسديد السريع ---
+// --- 4. وظيفة عرض قائمة الزبائن (الجديدة) ---
+function renderCustomerList() {
+    const tbody = document.getElementById('customersListBody');
+    tbody.innerHTML = '';
+
+    // استخراج أسماء الزبائن الفريدة
+    const uniqueCustomers = [...new Set(transactions.map(t => t.name))].sort();
+
+    if (uniqueCustomers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center">لا يوجد زبائن مسجلين</td></tr>';
+    } else {
+        uniqueCustomers.forEach((name, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td style="font-weight:bold;">${name}</td>
+                <td>
+                    <button class="btn-glass" style="padding: 5px 15px;" onclick="performSearch('${name}')">
+                        <i class="fas fa-eye"></i> كشف
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+}
+
+// --- 5. إجراءات الحذف والتعديل والتسديد السريع ---
 
 function deleteTransaction(id) {
     if(confirm("هل أنت متأكد من حذف هذه العملية؟ لا يمكن التراجع.")) {
@@ -208,7 +236,7 @@ function prepareQuickAction(type) {
     switchTab('addTab');
 }
 
-// --- 5. السجل العام ---
+// --- 6. السجل العام ---
 function renderGeneralLedger() {
     const tbody = document.getElementById('generalTableBody');
     tbody.innerHTML = '';
