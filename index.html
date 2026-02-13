@@ -29,8 +29,10 @@
                     <div class="form-row">
                         <div class="form-group half">
                             <select id="transType" required>
-                                <option value="debt">مدين (مطلوب)</option>
-                                <option value="payment">دائن (يطلب)</option>
+                                <option value="payment">مدين (عليه دين / سحب بضاعة)</option>
+                                <option value="debt">دائن (له دين / يطلبني)</option>
+                                <option value="settle_debt">تسديد المدين (استلام مبلغ منه)</option>
+                                <option value="settle_credit">تسديد الدائن (دفع مبلغ له)</option>
                             </select>
                         </div>
                         <div class="form-group half">
@@ -78,8 +80,8 @@
                 </div>
                 
                 <div class="quick-actions">
-                    <button onclick="prepareQuickAction('debt')" class="btn-small btn-green">إضافة دين</button>
-                    <button onclick="prepareQuickAction('payment')" class="btn-small btn-red">تسديد</button>
+                    <button onclick="prepareQuickAction('payment')" class="btn-small btn-red">إضافة دين (مدين)</button>
+                    <button onclick="prepareQuickAction('settle_debt')" class="btn-small btn-green">تسديد (استلام)</button>
                 </div>
 
                 <div class="table-responsive">
