@@ -10,7 +10,19 @@
 </head>
 <body>
 
-    <div class="container">
+    <div id="loginScreen" class="glass-panel text-center" style="max-width: 400px; margin: 100px auto; padding: 30px;">
+        <h2><i class="fas fa-lock"></i> تسجيل الدخول</h2>
+        <div class="form-group">
+            <input type="text" id="loginUser" placeholder="اسم المستخدم">
+        </div>
+        <div class="form-group">
+            <input type="password" id="loginPass" placeholder="كلمة المرور">
+        </div>
+        <button onclick="checkLogin()" class="btn-glass">دخول</button>
+        <p id="loginError" style="color: #ff5252; margin-top: 10px; display: none; font-weight: bold;">بيانات الدخول خاطئة!</p>
+    </div>
+
+    <div class="container" id="mainApp" style="display: none;">
         
         <header class="glass-panel text-center">
             <h1><i class="fas fa-file-invoice-dollar"></i> سجل الديون الذكي</h1>
@@ -45,7 +57,7 @@
                             <input type="text" id="itemName" placeholder="المادة (اسم السلعة)">
                         </div>
                         <div class="form-group half">
-                            <input type="number" id="itemCount" placeholder="العدد" min="1">
+                            <input type="number" id="itemCount" placeholder="تسلسل العملية (تلقائي)" readonly>
                         </div>
                     </div>
                     <div class="form-group">
@@ -146,7 +158,7 @@
 
     </div>
 
-    <div class="glass-panel nav-tabs bottom-nav">
+    <div class="glass-panel nav-tabs bottom-nav" id="bottomNav" style="display: none;">
         <button class="tab-btn active" onclick="switchTab('addTab')">
             <i class="fas fa-plus-circle"></i> إضافة
         </button>
