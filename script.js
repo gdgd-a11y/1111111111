@@ -12,6 +12,20 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGeneralLedger();
 });
 
+// --- نظام تسجيل الدخول ---
+function checkLogin() {
+    const user = document.getElementById('loginUser').value;
+    const pass = document.getElementById('loginPass').value;
+    
+    if(user === 'joud' && pass === '1133') {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        document.getElementById('bottomNav').style.display = 'flex'; // استخدام flex للحفاظ على تصميم الشريط
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+    }
+}
+
 // --- 1. منطق التبويبات (APP TABS) ---
 function switchTab(tabId) {
     // إخفاء كل المحتويات
@@ -44,14 +58,20 @@ document.getElementById('transactionForm').addEventListener('submit', function(e
     const amount = parseFloat(document.getElementById('amount').value);
     const date = document.getElementById('transDate').value;
     
-    // الحقول الجديدة
     const itemName = document.getElementById('itemName').value.trim();
-    const itemCount = document.getElementById('itemCount').value;
     const itemDetails = document.getElementById('itemDetails').value.trim();
 
     if (!name || isNaN(amount) || amount <= 0) {
         alert("يرجى إدخال الاسم والمبلغ بشكل صحيح");
         return;
+    }
+
+    // --- حساب التسلسل التلقائي (العدد) لكل زبون ---
+    let finalItemCount = document.getElementById('itemCount').value;
+    if (!id) { // إذا كانت إضافة عملية جديدة (وليس تعديل)
+        // البحث عن عدد العمليات السابقة لهذا الزبون تحديداً وإضافة 1
+        const customerTransCount = transactions.filter(t => t.name.toLowerCase() === name.toLowerCase()).length;
+        finalItemCount = customerTransCount + 1;
     }
 
     const transactionData = {
@@ -60,9 +80,9 @@ document.getElementById('transactionForm').addEventListener('submit', function(e
         name: name,
         type: type,
         amount: amount,
-        itemName: itemName,    // المادة
-        itemCount: itemCount,  // العدد
-        itemDetails: itemDetails // ملاحظات
+        itemName: itemName,    
+        itemCount: finalItemCount, // إسناد التسلسل التلقائي
+        itemDetails: itemDetails 
     };
 
     if (id) {
@@ -116,9 +136,6 @@ function searchCustomer(forceName = null) {
     } else {
         customerTrans.forEach(t => {
             // حساب الرصيد التراكمي
-            // القيم التي تزيد الدين: payment (مدين/سحب) و settle_credit (تسديد دائن/دفعنا له لتقليل دينه علينا)
-            // القيم التي تنقص الدين: debt (دائن/يطلبنا) و settle_debt (تسديد مدين/دفع لنا)
-            
             if (t.type === 'debt' || t.type === 'settle_debt') {
                 runningBalance -= t.amount;
             } else {
@@ -127,7 +144,7 @@ function searchCustomer(forceName = null) {
 
             const row = document.createElement('tr');
             
-            // تحديد النصوص والألوان بناءً على النوع الجديد
+            // تحديد النصوص والألوان
             let typeText = '';
             let typeClass = '';
 
@@ -153,12 +170,14 @@ function searchCustomer(forceName = null) {
                     typeClass = 'text-neutral';
             }
             
-            // دمج اسم المادة والملاحظات
-            let notesText = t.itemDetails || '-';
-            if (t.itemName) {
-                notesText = `${t.itemName} ${t.itemCount ? '(' + t.itemCount + ')' : ''} - ${notesText}`;
-            }
-            if (notesText === '-') notesText = t.itemName || '-';
+            // دمج اسم المادة، التسلسل التلقائي، والملاحظات ليظهروا بشكل واضح
+            let itemStr = t.itemName || '';
+            let countStr = t.itemCount ? `(عملية رقم: ${t.itemCount})` : '';
+            let noteStr = t.itemDetails || '';
+            
+            // تجميع النصوص الموجودة فقط
+            let combinedArr = [itemStr, countStr, noteStr].filter(Boolean);
+            let notesText = combinedArr.length > 0 ? combinedArr.join(' - ') : '-';
 
             // أزرار التعديل والحذف
             row.innerHTML = `
@@ -178,7 +197,6 @@ function searchCustomer(forceName = null) {
 
     const finalDisplay = document.getElementById('finalBalanceDisplay');
     finalDisplay.innerText = formatMoney(runningBalance);
-    // إذا كان الرصيد موجب (أحمر) يعني هو مطلوب، إذا سالب (أخضر) يعني هو يطلبنا
     finalDisplay.style.color = runningBalance > 0 ? '#ff5252' : (runningBalance < 0 ? '#4caf50' : '#fff');
 }
 
@@ -274,7 +292,7 @@ function editTransaction(id) {
     document.getElementById('amount').value = t.amount;
     document.getElementById('transDate').value = t.date;
     document.getElementById('itemName').value = t.itemName || '';
-    document.getElementById('itemCount').value = t.itemCount || '';
+    document.getElementById('itemCount').value = t.itemCount || ''; // جلب التسلسل التلقائي السابق
     document.getElementById('itemDetails').value = t.itemDetails || '';
 
     // تغيير حالة الزر والنصوص
