@@ -115,10 +115,11 @@ function searchCustomer(forceName = null) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">لا توجد حركات لهذا الزبون</td></tr>';
     } else {
         customerTrans.forEach(t => {
-            // حساب الرصيد التراكمي (تم تصحيح المعادلة الرياضية حسب الصورة)
-            // الزر الأخضر (debt) أصبح يعمل كتسديد (طرح)
-            // الزر الأحمر (payment) أصبح يعمل كدين (جمع)
-            if (t.type === 'debt') {
+            // حساب الرصيد التراكمي
+            // القيم التي تزيد الدين: payment (مدين/سحب) و settle_credit (تسديد دائن/دفعنا له لتقليل دينه علينا)
+            // القيم التي تنقص الدين: debt (دائن/يطلبنا) و settle_debt (تسديد مدين/دفع لنا)
+            
+            if (t.type === 'debt' || t.type === 'settle_debt') {
                 runningBalance -= t.amount;
             } else {
                 runningBalance += t.amount;
@@ -126,11 +127,31 @@ function searchCustomer(forceName = null) {
 
             const row = document.createElement('tr');
             
-            // --- تصحيح المسميات حسب طلبك ---
-            // إذا كان النوع مخزن debt (الأخضر) نعرضه "تسديد"
-            // إذا كان النوع مخزن payment (الأحمر) نعرضه "مدين"
-            const typeText = t.type === 'debt' ? 'تسديد' : 'مدين (مطلوب)';
-            const typeClass = t.type === 'debt' ? 'text-green' : 'text-red';
+            // تحديد النصوص والألوان بناءً على النوع الجديد
+            let typeText = '';
+            let typeClass = '';
+
+            switch(t.type) {
+                case 'payment':
+                    typeText = 'مدين (عليه)';
+                    typeClass = 'text-red';
+                    break;
+                case 'debt':
+                    typeText = 'دائن (له)';
+                    typeClass = 'text-green';
+                    break;
+                case 'settle_debt':
+                    typeText = 'تسديد (واصل)';
+                    typeClass = 'text-green';
+                    break;
+                case 'settle_credit':
+                    typeText = 'تسديد (مصروف)';
+                    typeClass = 'text-red';
+                    break;
+                default:
+                    typeText = '---';
+                    typeClass = 'text-neutral';
+            }
             
             // دمج اسم المادة والملاحظات
             let notesText = t.itemDetails || '-';
@@ -157,7 +178,8 @@ function searchCustomer(forceName = null) {
 
     const finalDisplay = document.getElementById('finalBalanceDisplay');
     finalDisplay.innerText = formatMoney(runningBalance);
-    finalDisplay.style.color = runningBalance > 0 ? '#4caf50' : (runningBalance < 0 ? '#ff5252' : '#fff');
+    // إذا كان الرصيد موجب (أحمر) يعني هو مطلوب، إذا سالب (أخضر) يعني هو يطلبنا
+    finalDisplay.style.color = runningBalance > 0 ? '#ff5252' : (runningBalance < 0 ? '#4caf50' : '#fff');
 }
 
 // --- 4. وظيفة عرض قائمة الزبائن (زر حذف فقط) ---
@@ -277,7 +299,10 @@ function prepareQuickAction(type) {
 
     cancelEditMode(); // التأكد من عدم وجود تعديل معلق
     document.getElementById('customerName').value = name;
+    
+    // تحديد نوع العملية في القائمة بناءً على الزر المضغوط
     document.getElementById('transType').value = type;
+    
     switchTab('addTab');
 }
 
@@ -289,10 +314,23 @@ function renderGeneralLedger() {
 
     sortedTrans.slice(0, 50).forEach((t, index) => { // عرض آخر 50 فقط للأداء
         const row = document.createElement('tr');
+        
+        let typeText = '';
+        let typeClass = '';
+        
+        // منطق عرض الأنواع في السجل العام
+        switch(t.type) {
+            case 'payment': typeText = 'مدين'; typeClass = 'text-red'; break;
+            case 'debt': typeText = 'دائن'; typeClass = 'text-green'; break;
+            case 'settle_debt': typeText = 'تسديد واصل'; typeClass = 'text-green'; break;
+            case 'settle_credit': typeText = 'تسديد مصروف'; typeClass = 'text-red'; break;
+            default: typeText = '-';
+        }
+
         row.innerHTML = `
             <td>${index + 1}</td>
             <td>${t.name}</td>
-            <td class="${t.type === 'debt' ? 'text-green' : 'text-red'}">${t.type === 'debt' ? 'مدين' : 'تسديد'}</td>
+            <td class="${typeClass}">${typeText}</td>
             <td>${formatMoney(t.amount)}</td>
             <td>${t.itemName || '-'}</td>
             <td>
