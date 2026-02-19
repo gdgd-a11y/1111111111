@@ -1,15 +1,19 @@
 // مصفوفة لتخزين البيانات
-let transactions = JSON.parse(localStorage.getItem('debtTransactions')) || [];
-
-// حفظ البيانات
-function saveToLocal() {
-    localStorage.setItem('debtTransactions', JSON.stringify(transactions));
-}
+let transactions = [];
 
 // عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('transDate').valueAsDate = new Date();
-    renderGeneralLedger();
+    
+    try {
+        // جلب البيانات من Firebase بدلاً من التخزين المحلي
+        const snapshot = await db.collection('transactions').get();
+        transactions = snapshot.docs.map(doc => doc.data());
+        renderGeneralLedger();
+    } catch (error) {
+        console.error("خطأ في جلب البيانات: ", error);
+        alert("حدث خطأ أثناء تحميل البيانات من قاعدة البيانات.");
+    }
 });
 
 // --- نظام تسجيل الدخول ---
@@ -49,7 +53,7 @@ function switchTab(tabId) {
 }
 
 // --- 2. إدارة العمليات (إضافة / تعديل) ---
-document.getElementById('transactionForm').addEventListener('submit', function(e) {
+document.getElementById('transactionForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
     const id = document.getElementById('editTransactionId').value;
@@ -65,6 +69,12 @@ document.getElementById('transactionForm').addEventListener('submit', function(e
         alert("يرجى إدخال الاسم والمبلغ بشكل صحيح");
         return;
     }
+
+    // تعطيل الزر مؤقتاً أثناء الحفظ
+    const saveBtn = document.getElementById('saveBtn');
+    const originalBtnText = saveBtn.innerText;
+    saveBtn.innerText = "جاري الحفظ...";
+    saveBtn.disabled = true;
 
     // --- حساب التسلسل التلقائي (العدد) لكل زبون ---
     let finalItemCount = document.getElementById('itemCount').value;
@@ -85,27 +95,37 @@ document.getElementById('transactionForm').addEventListener('submit', function(e
         itemDetails: itemDetails 
     };
 
-    if (id) {
-        // تعديل عملية موجودة
-        const index = transactions.findIndex(t => t.id == id);
-        if(index !== -1) transactions[index] = transactionData;
-        alert("تم تعديل العملية بنجاح");
-        cancelEditMode(); // الخروج من وضع التعديل
-    } else {
-        // إضافة عملية جديدة
-        transactions.push(transactionData);
-        alert("تمت الإضافة بنجاح");
-        this.reset();
-        document.getElementById('transDate').valueAsDate = new Date();
-    }
+    try {
+        // حفظ العملية في فايربيز
+        await db.collection('transactions').doc(transactionData.id.toString()).set(transactionData);
 
-    saveToLocal();
-    renderGeneralLedger();
-    
-    // إذا كان هناك بحث نشط، نحدث الكشف
-    const activeSearch = document.getElementById('statementCustomerName').innerText;
-    if(activeSearch !== '---' && name === activeSearch) {
-        searchCustomer(name);
+        if (id) {
+            // تعديل عملية موجودة
+            const index = transactions.findIndex(t => t.id == id);
+            if(index !== -1) transactions[index] = transactionData;
+            alert("تم تعديل العملية بنجاح");
+            cancelEditMode(); // الخروج من وضع التعديل
+        } else {
+            // إضافة عملية جديدة
+            transactions.push(transactionData);
+            alert("تمت الإضافة بنجاح");
+            this.reset();
+            document.getElementById('transDate').valueAsDate = new Date();
+        }
+
+        renderGeneralLedger();
+        
+        // إذا كان هناك بحث نشط، نحدث الكشف
+        const activeSearch = document.getElementById('statementCustomerName').innerText;
+        if(activeSearch !== '---' && name === activeSearch) {
+            searchCustomer(name);
+        }
+    } catch (error) {
+        console.error("خطأ في حفظ العملية: ", error);
+        alert("حدث خطأ أثناء حفظ العملية في قاعدة البيانات.");
+    } finally {
+        saveBtn.innerText = originalBtnText;
+        saveBtn.disabled = false;
     }
 });
 
@@ -229,55 +249,86 @@ function renderCustomerList() {
 
 // --- 5. وظائف إدارة الزبائن الجديدة ---
 
-function renameCustomer(oldName) {
+async function renameCustomer(oldName) {
     const newName = prompt("أدخل الاسم الجديد للزبون:", oldName);
     if(newName && newName.trim() !== "" && newName !== oldName) {
-        // تحديث كل العمليات المرتبطة بهذا الاسم
-        let updatedCount = 0;
-        transactions.forEach(t => {
-            if(t.name === oldName) {
-                t.name = newName.trim();
-                updatedCount++;
+        try {
+            let updatedCount = 0;
+            const batch = db.batch();
+
+            // تحديث كل العمليات المرتبطة بهذا الاسم في فايربيز والمصفوفة
+            transactions.forEach(t => {
+                if(t.name === oldName) {
+                    t.name = newName.trim();
+                    batch.set(db.collection('transactions').doc(t.id.toString()), t);
+                    updatedCount++;
+                }
+            });
+
+            await batch.commit();
+
+            alert(`تم تعديل اسم الزبون بنجاح في ${updatedCount} عملية.`);
+            renderCustomerList();
+            renderGeneralLedger();
+            
+            // إذا كان هناك بحث نشط بنفس الاسم القديم، نحدثه
+            if(document.getElementById('statementCustomerName').innerText === oldName) {
+                 document.getElementById('searchInput').value = newName.trim();
+                 searchCustomer(newName.trim());
             }
-        });
-        saveToLocal();
-        alert(`تم تعديل اسم الزبون بنجاح في ${updatedCount} عملية.`);
-        renderCustomerList();
-        renderGeneralLedger();
-        
-        // إذا كان هناك بحث نشط بنفس الاسم القديم، نحدثه
-        if(document.getElementById('statementCustomerName').innerText === oldName) {
-             document.getElementById('searchInput').value = newName.trim();
-             searchCustomer(newName.trim());
+        } catch(error) {
+            console.error("خطأ في تعديل الاسم: ", error);
+            alert("حدث خطأ أثناء تعديل الاسم في قاعدة البيانات.");
         }
     }
 }
 
-function deleteCustomerAll(name) {
+async function deleteCustomerAll(name) {
     if(confirm(`تحذير هام!\nهل أنت متأكد من حذف الزبون "${name}" وكافة ديونه وسجلاته نهائياً؟\nلا يمكن التراجع عن هذا الإجراء.`)) {
-        transactions = transactions.filter(t => t.name !== name);
-        saveToLocal();
-        renderCustomerList();
-        renderGeneralLedger();
-        
-        // إخفاء الكشف إذا كان معروضاً لنفس الزبون
-        if(document.getElementById('statementCustomerName').innerText === name) {
-            document.getElementById('customerStatementSection').classList.add('hidden');
-            document.getElementById('statementCustomerName').innerText = "---";
+        try {
+            const batch = db.batch();
+            
+            transactions.forEach(t => {
+                if(t.name === name) {
+                    batch.delete(db.collection('transactions').doc(t.id.toString()));
+                }
+            });
+
+            await batch.commit();
+
+            transactions = transactions.filter(t => t.name !== name);
+            renderCustomerList();
+            renderGeneralLedger();
+            
+            // إخفاء الكشف إذا كان معروضاً لنفس الزبون
+            if(document.getElementById('statementCustomerName').innerText === name) {
+                document.getElementById('customerStatementSection').classList.add('hidden');
+                document.getElementById('statementCustomerName').innerText = "---";
+            }
+        } catch(error) {
+            console.error("خطأ في حذف الزبون: ", error);
+            alert("حدث خطأ أثناء حذف الزبون من قاعدة البيانات.");
         }
     }
 }
 
 // --- 6. إجراءات الحذف والتعديل (للعمليات الفردية) ---
 
-function deleteTransaction(id) {
+async function deleteTransaction(id) {
     if(confirm("هل أنت متأكد من حذف هذه العملية؟ لا يمكن التراجع.")) {
-        transactions = transactions.filter(t => t.id !== id);
-        saveToLocal();
-        // تحديث العرض الحالي
-        const currentName = document.getElementById('statementCustomerName').innerText;
-        if(currentName !== '---') searchCustomer(currentName);
-        renderGeneralLedger();
+        try {
+            await db.collection('transactions').doc(id.toString()).delete();
+            
+            transactions = transactions.filter(t => t.id !== id);
+            
+            // تحديث العرض الحالي
+            const currentName = document.getElementById('statementCustomerName').innerText;
+            if(currentName !== '---') searchCustomer(currentName);
+            renderGeneralLedger();
+        } catch (error) {
+            console.error("خطأ في حذف العملية: ", error);
+            alert("حدث خطأ أثناء حذف العملية من قاعدة البيانات.");
+        }
     }
 }
 
