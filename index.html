@@ -175,24 +175,23 @@
         </button>
     </div>
 
-    <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyAVzQBetgaua2r71SFG93weo1AfS-u56hs",
-    authDomain: "lkjoij-12850.firebaseapp.com",
-    projectId: "lkjoij-12850",
-    storageBucket: "lkjoij-12850.firebasestorage.app",
-    messagingSenderId: "410376993405",
-    appId: "1:410376993405:web:c0b453b1525d22fb164f14"
-  };
+    <script>
+        // إعدادات Firebase الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVzQBetgaua2r71SFG93weo1AfS-u56hs",
+            authDomain: "lkjoij-12850.firebaseapp.com",
+            projectId: "lkjoij-12850",
+            storageBucket: "lkjoij-12850.firebasestorage.app",
+            messagingSenderId: "410376993405",
+            appId: "1:410376993405:web:c0b453b1525d22fb164f14"
+        };
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
+        // تهيئة Firebase وقاعدة البيانات
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
     </script>
 
     <script>
