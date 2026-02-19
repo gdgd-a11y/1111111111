@@ -192,6 +192,16 @@
         // تهيئة Firebase وقاعدة البيانات
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+
+        // تفعيل ميزة العمل بدون إنترنت (Offline Persistence) لقاعدة البيانات
+        db.enablePersistence()
+            .catch(function(err) {
+                if (err.code == 'failed-precondition') {
+                    console.warn("لا يمكن تفعيل العمل بدون اتصال، التطبيق مفتوح في عدة تبويبات.");
+                } else if (err.code == 'unimplemented') {
+                    console.warn("المتصفح الحالي لا يدعم ميزة التخزين بدون اتصال.");
+                }
+            });
     </script>
 
     <script>
