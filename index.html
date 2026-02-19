@@ -7,10 +7,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
 
     <div id="loginScreen" class="glass-panel text-center" style="max-width: 400px; margin: 100px auto; padding: 30px;">
+        <button id="installAppBtn" class="btn-glass" style="display: none; margin-bottom: 20px; background: rgba(76, 175, 80, 0.6);"><i class="fas fa-download"></i> تثبيت التطبيق على الجهاز</button>
         <h2><i class="fas fa-lock"></i> تسجيل الدخول</h2>
         <div class="form-group">
             <input type="text" id="loginUser" placeholder="اسم المستخدم">
@@ -205,6 +207,34 @@
                     });
             });
         }
+
+        // كود تفعيل زر تثبيت التطبيق
+        let deferredPrompt;
+        const installAppBtn = document.getElementById('installAppBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // منع المتصفح من إظهار رسالة التثبيت التلقائية
+            e.preventDefault();
+            // حفظ الحدث لاستخدامه لاحقاً
+            deferredPrompt = e;
+            // إظهار زر التثبيت للمستخدم
+            installAppBtn.style.display = 'block';
+        });
+
+        installAppBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // إظهار نافذة التثبيت الخاصة بالمتصفح
+                deferredPrompt.prompt();
+                // انتظار اختيار المستخدم
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    // إخفاء الزر إذا وافق المستخدم على التثبيت
+                    installAppBtn.style.display = 'none';
+                }
+                // تصفير المتغير
+                deferredPrompt = null;
+            }
+        });
     </script>
 
     <script src="script.js"></script>
